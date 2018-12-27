@@ -1,0 +1,80 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.010;
+
+my $header = readline =~ s/\s//rg;
+die "Syntax error on line 1\n" unless $header =~ m/^L([1-4])(\+?)=-/;
+my $level = $1;
+
+die "Only levels 1 and 2 are supported\n" unless $level == 1 || $level == 2;
+die "Syntax error on line 1\n" unless $2 eq '+';
+
+my @incr_triggers = ();
+my @faildecr_triggers = ();
+my @succdecr_triggers = ();
+my @counters = ();
+
+my $linenum = 0;
+
+
+while(defined(my $line = readline)) {
+    $line =~ s/\s//g;
+    die "Syntax error on line " . ($linenum+2) . "\n" unless $line =~ m/^$linenum:([+\-]\d+);([+\-]\d+);([+\-]\d+);@(\d+)/;
+    die "Counter initialized to 0 on line " . ($linenum+2) . "\n" if $4 == 0 && $level == 1;
+    push @incr_triggers, $1;
+    push @faildecr_triggers, $2;
+    push @succdecr_triggers, $3;
+    push @counters, $4;
+    $linenum++;
+}
+
+
+
+die "No counters to operate on\n" if $linenum == 0;
+
+my @io_counters = (0..($linenum - 1));
+
+foreach my $iotrigger (@incr_triggers, @faildecr_triggers, @succdecr_triggers) {
+    next unless $iotrigger =~ m/^-/;
+    @io_counters = grep {$_ != abs $iotrigger} @io_counters;
+}
+
+die "No IO counters\n" if @io_counters != 2;
+my $io = @io_counters == 2;
+
+my $trigger = "+0";
+
+my $output = '';
+
+while (1) {
+    die "Internal error: trigger does not match pattern" unless $trigger =~ m/([+\-])(\d+)/;
+    if ($1 eq '+') {
+        $counters[$2]++;
+        last if $trigger eq $incr_triggers[$2];
+        $trigger = $incr_triggers[$2];
+        if ($io) {
+            $output .= 0 if $io_counters[0] == $2;
+            $output .= 1 if $io_counters[1] == $2;
+            if (8 == length $output) {
+                
+                print chr oct "0b$output";
+                $output = '';
+            }
+        }
+    } elsif ($1 eq '-') {
+        if ($counters[$2] == 1) {
+            last if $trigger eq $faildecr_triggers[$2];
+            $trigger = $faildecr_triggers[$2];
+            $counters[$2]-- unless $level == 1;
+        } else {
+            die "Attempted to decrement counter $2 when it was already at 0\n" if $counters[$2] == 0;
+            $trigger = $succdecr_triggers[$2];
+            $counters[$2]--;
+            
+        }
+    } else {
+        die "Internal error: trigger does not start with '+' or '-'"
+    }
+    
+}
