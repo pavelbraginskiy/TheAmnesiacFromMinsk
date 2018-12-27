@@ -19,6 +19,7 @@ my $linenum = 0;
 
 
 while(defined(my $line = readline)) {
+    die "Syntax error on line " . ($linenum+2) . " (whitespace in integer literal)\n" if $line =~ m/\d\s\d/;
     $line =~ s/\s//g;
     die "Syntax error on line " . ($linenum+2) . "\n" unless $line =~ m/^$linenum:([+\-]\d+);([+\-]\d+);([+\-]\d+);@(\d+)/;
     die "Counter initialized to 0 on line " . ($linenum+2) . "\n" if $4 == 0 && $level == 1;
