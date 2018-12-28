@@ -40,7 +40,8 @@ while(defined(my $line = readline)) {
 }
 
 for (@counters) {
-    $_ = ord getc STDIN if $_ eq '{}' 
+    use integer;
+    $_ = 0+(readline STDIN) if $_ eq '{}' 
 }
 
 die "No counters to operate on\n" if $linenum == 0;
@@ -66,7 +67,7 @@ while (1) {
         $counters[$2]++;
         last if $trigger eq $incr_triggers[$2];
         $trigger = $incr_triggers[$2];
-        
+
         $output .= 0 if $io_counters[0] == $2;
         $output .= 1 if $io_counters[1] == $2;
         if (8 == length $output) {
