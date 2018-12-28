@@ -3,6 +3,15 @@ use strict;
 use warnings;
 use 5.010;
 
+use Quote::Code;
+use Lingua::EN::Inflect 'PL';
+
+$| = 1;
+
+my $quiet = 0;
+$quiet = 1 if grep {$_ eq '-q'} @ARGV;
+@ARGV = grep {$_ ne '-q'} @ARGV;
+
 my $header = readline =~ s/\s//rg;
 die "Syntax error on line 1\n" unless $header =~ m/^L([1-4])(\+?)=-/;
 my $level = $1;
@@ -19,10 +28,10 @@ my $linenum = 0;
 
 
 while(defined(my $line = readline)) {
-    die "Syntax error on line " . ($linenum+2) . " (whitespace in integer literal)\n" if $line =~ m/\d\s\d/;
+    die qc"Syntax error on line {$linenum+2} (whitespace in integer literal)\n" if $line =~ m/\d\s\d/;
     $line =~ s/\s//g;
-    die "Syntax error on line " . ($linenum+2) . "\n" unless $line =~ m/^$linenum:([+\-]\d+);([+\-]\d+);([+\-]\d+);@(\d+)/;
-    die "Counter initialized to 0 on line " . ($linenum+2) . "\n" if $4 == 0 && $level == 1;
+    die qc"Syntax error on line {$linenum+2}\n" unless $line =~ m/^$linenum:([+\-]\d+);([+\-]\d+);([+\-]\d+);@(\d+)/;
+    die qc"Counter initialized to 0 on line {$linenum+2}\n" if $4 == 0 && $level == 1;
     push @incr_triggers, $1;
     push @faildecr_triggers, $2;
     push @succdecr_triggers, $3;
@@ -30,7 +39,9 @@ while(defined(my $line = readline)) {
     $linenum++;
 }
 
-
+for (@counters) {
+    $_ = ord getc STDIN if $_ eq '{}' 
+}
 
 die "No counters to operate on\n" if $linenum == 0;
 
@@ -47,6 +58,8 @@ my $io = @io_counters == 2;
 my $trigger = "+0";
 
 my $output = '';
+
+my $cycles = 1;
 
 while (1) {
     die "Internal error: trigger does not match pattern" unless $trigger =~ m/([+\-])(\d+)/;
@@ -72,10 +85,15 @@ while (1) {
             die "Attempted to decrement counter $2 when it was already at 0\n" if $counters[$2] == 0;
             $trigger = $succdecr_triggers[$2];
             $counters[$2]--;
-            
         }
     } else {
         die "Internal error: trigger does not start with '+' or '-'"
     }
-    
+} continue {
+    $cycles++;
+}
+unless ($quiet) {
+    say STDERR qc"Process finished in {$cycles} {PL('operation', $cycles)}";
+    say STDERR 'Final values of counters:';
+    say STDERR qc"{$_}: {$counters[$_]}" for 0..$#counters;
 }
